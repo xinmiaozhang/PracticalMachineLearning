@@ -1,0 +1,67 @@
+---
+title: "Prediction of the Exercise Manner Using the Weight Lifting Exercises Dataset"
+output: html_document
+---
+
+### Introduction
+The weight lifting exercises research (1) collected exericises data of six young healthy participants who were asked to perform the unilateral  dumbbell biceps curl in five different manners: "exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E)"(1). The goal of this work is to predict the exercises manner in the weight lifting exercises dataset.  
+
+### Exploratory Data Analysis
+The whole dataset include 19622 observations of 160 variables. Out of the 160 variables, there are 152 variabels recording three-axes acceleratin, gyroscope and magnetometer data at the users' glove, armband, lumbar belt, and bumbbell. A first look at the 152 variables found that there are 99 variables where ~98% of the observations are NA values. We thus decide to use the other 53 variables (shown in the following embedded R code chunk) in predicting the execise manner.  
+```{r, echo=FALSE}
+setwd("C:/Users/lizhang/Documents/SelfManagement/TextBooks/Coursera/Data Science - Johns Hopkins/8 Practical Machine Learning")
+
+# read in testing and training data
+training <- read.csv(file="./project/pml-training.csv")
+
+features <- c('user_name', 'roll_belt','pitch_belt', 'yaw_belt', 'total_accel_belt')
+features <-c(features,'gyros_belt_x' , 'gyros_belt_y','gyros_belt_z','accel_belt_x','accel_belt_y','accel_belt_z')
+features <-c(features,'magnet_belt_x', 'magnet_belt_y','magnet_belt_z','roll_arm')
+features <-c(features,'pitch_arm','yaw_arm','total_accel_arm','gyros_arm_x','gyros_arm_y','gyros_arm_z')
+features <-c(features,'accel_arm_x','accel_arm_y','accel_arm_z','magnet_arm_x')
+features <-c(features,'magnet_arm_y','magnet_arm_z', 'roll_dumbbell','pitch_dumbbell','yaw_dumbbell')
+features <-c(features,'total_accel_dumbbell','gyros_dumbbell_x','gyros_dumbbell_y')
+features <-c(features,'gyros_dumbbell_z','accel_dumbbell_x','accel_dumbbell_y','accel_dumbbell_z')
+features <-c(features,'magnet_dumbbell_x','magnet_dumbbell_y','magnet_dumbbell_z')
+features <-c(features,'roll_forearm','pitch_forearm','yaw_forearm')
+features <-c(features,'total_accel_forearm', 'gyros_forearm_x','gyros_forearm_y')
+features <-c(features,'gyros_forearm_z','accel_forearm_x','accel_forearm_y','accel_forearm_z')
+features <-c(features,'magnet_forearm_x','magnet_forearm_y','magnet_forearm_z')
+features
+```
+
+### Random Forest Prediction
+We split the dataset into training and test sets with ratio of 6:4 for cross-validation. we first performed the random forest model with 200 trees on the training set.  
+```{r}
+library(randomForest)
+library(caret)
+inTrain <- createDataPartition(y=training$classe,p=0.6,list=FALSE)
+trains <- training[inTrain,]
+tests <- training[-inTrain,]
+modelfit1<- randomForest(classe~.,data=trains[,c(features,'classe')],
+                    ntree=200,importance=TRUE,proximity=TRUE)
+print(modelfit1)
+plot(modelfit1, main='random forest model')
+```
+
+The following are the top 15 important variables in the random forest model.   
+```{r}
+features[order(varUsed(modelfit1),decreasing=TRUE)[1:15]]
+```
+
+We then evaluted the model on the test set. According to refernce (1), we expect the overall performance accuracy is ~98%. Our result shows that the accuracy on the test set is 99%.  
+```{r}
+pds1 <- predict(modelfit1,tests[,c(features,'classe')])
+confusionM <-table(pds1,tests$classe)
+# Compare the prediced result with the real classification data
+confusionM
+# the accuracy
+sum(diag(confusionM))/sum(confusionM)
+
+```
+
+### Conclusion
+In this work, we use the published weight lifting exercise dataset to predict the manner in which participants exercise. The random forest model initially includes 53 predictor variables and yields 99% accuracy on perdiction. The model took a while to run with high physical memory usage. A better option could be to reduce the number of predictor variables in the random forest model. The aforementioned varible importance result together with the cross-validated predicton performance of models (rfcv method in randomforest package) implies that random forest model with the top 13 imporatnt variables is good enough to perform the comparable accuracy. Unfornately, I didn't take the further step in this article becuase of my computer performance.  
+
+### References
+(1) Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
